@@ -363,17 +363,21 @@ static esp_err_t stream_handler(httpd_req_t *req)
                         snapshot_buf = (uint8_t*)malloc(EI_CAMERA_RAW_FRAME_BUFFER_COLS * EI_CAMERA_RAW_FRAME_BUFFER_ROWS * EI_CAMERA_FRAME_BYTE_SIZE);
                         
                         if (snapshot_buf != nullptr) {
-                            if (ei_camera_capture((size_t)EI_CLASSIFIER_INPUT_WIDTH, (size_t)EI_CLASSIFIER_INPUT_HEIGHT, snapshot_buf)) {
-                                ei::signal_t signal;
-                                signal.total_length = EI_CLASSIFIER_INPUT_WIDTH * EI_CLASSIFIER_INPUT_HEIGHT;
-                                signal.get_data = &ei_camera_get_data;
+                            // Copy the RGB888 data to snapshot buffer and resize if needed
+                            size_t copy_len = out_len;
+                            size_t max_len = EI_CAMERA_RAW_FRAME_BUFFER_COLS * EI_CAMERA_RAW_FRAME_BUFFER_ROWS * EI_CAMERA_FRAME_BYTE_SIZE;
+                            if (copy_len > max_len) copy_len = max_len;
+                            memcpy(snapshot_buf, out_buf, copy_len);
+                            
+                            ei::signal_t signal;
+                            signal.total_length = EI_CLASSIFIER_INPUT_WIDTH * EI_CLASSIFIER_INPUT_HEIGHT;
+                            signal.get_data = &ei_camera_get_data;
 
-                                EI_IMPULSE_ERROR err = run_classifier(&signal, &result, false);
-                                if (err == EI_IMPULSE_OK) {
-                                    detected = (result.bounding_boxes_count > 0);
-                                    if (detected) {
-                                        draw_detection_boxes(&rfb, &result);
-                                    }
+                            EI_IMPULSE_ERROR err = run_classifier(&signal, &result, false);
+                            if (err == EI_IMPULSE_OK) {
+                                detected = (result.bounding_boxes_count > 0);
+                                if (detected) {
+                                    draw_detection_boxes(&rfb, &result);
                                 }
                             }
                             free(snapshot_buf);

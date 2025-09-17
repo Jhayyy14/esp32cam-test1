@@ -31,7 +31,11 @@ const char* password = "JHAYJHAY";
 void startCameraServer();
 void setupLedFlash(int pin);
 
-// Edge Impulse variables
+// Edge Impulse variables and constants
+#define EI_CAMERA_RAW_FRAME_BUFFER_COLS           320
+#define EI_CAMERA_RAW_FRAME_BUFFER_ROWS           240
+#define EI_CAMERA_FRAME_BYTE_SIZE                 3
+
 static bool debug_nn = false; // Set this to true to see e.g. features generated from the raw signal
 static bool is_initialised = false;
 uint8_t *snapshot_buf = nullptr;
@@ -247,7 +251,9 @@ static int ei_camera_get_data(size_t offset, size_t length, float *out_ptr)
     size_t out_ptr_ix = 0;
 
     while (pixels_left != 0) {
-        out_ptr[out_ptr_ix] = (snapshot_buf[pixel_ix] << 16) + (snapshot_buf[pixel_ix + 1] << 8) + snapshot_buf[pixel_ix + 2];
+        // Swap BGR to RGB here
+        // due to https://github.com/espressif/esp32-camera/issues/379
+        out_ptr[out_ptr_ix] = (snapshot_buf[pixel_ix + 2] << 16) + (snapshot_buf[pixel_ix + 1] << 8) + snapshot_buf[pixel_ix];
 
         // go to the next pixel
         out_ptr_ix++;
